@@ -28,48 +28,6 @@ app.get('/', (req, res) => {
   res.send('Server is running...');
 });
 
-app.post('/login', async (req, res) => {
-  console.log('/login');
-  const phone = Number(req.body.phone);
-
-  // check if new user or existing user
-  let newUser;
-  try {
-    newUser = await User.find({ phone });
-    console.log('======newUser', phone, newUser);
-  } catch (error) {
-    res.status(500).json({ error });
-  }
-  if (newUser) {
-    if (newUser.length === 0) {
-      // save new user
-      const addNewUser = new User({ phone });
-      addNewUser
-        .save()
-        .then((data) => {
-          const token = jwt.sign({ phone, id: data.id }, 'somerandomtext');
-          res
-            .status(200)
-            .json({ token, phone, userId: data.id, isNewUser: true });
-        })
-        .catch((error) => {
-          res.status(500).json({ error });
-        });
-    } else {
-      // existing user
-      console.log('existing user id', newUser[0].id);
-      const token = jwt.sign({ phone, id: newUser[0].id }, 'somerandomtext');
-      res
-        .status(200)
-        .json({ token, phone, userId: newUser[0].id, isNewUser: false });
-    }
-  } else {
-    res
-      .status(500)
-      .json({ error: 'newUser is undefined - issue in database conn' });
-  }
-});
-
 app.post('/googleLogin', async (req, res) => {
   console.log('/googleLogin');
   try {
@@ -126,7 +84,28 @@ app.post('/updateUserProfile', authMiddleware, async (req, res) => {
     const id = jwtDecodedValue.id; // mongoose id
     const data = await User.findByIdAndUpdate(
       id,
-      { photoUrl: req.body.photoUrl, name: req.body.name, age: req.body.age },
+      {
+        photoUrl: req.body.photoUrl,
+        name: req.body.name,
+        age: req.body.age,
+        bio: req.body.bio,
+        currentCity: req.body.currentCity,
+      },
+      { new: true, runValidators: true }
+    );
+    res.status(200).json({ data });
+  } else res.status(401).json({ data: 'You are not authorized. Login again' });
+});
+
+app.post('/blockUser', authMiddleware, async (req, res) => {
+  console.log('/blockUser', req.body);
+  const jwtDecodedValue = req.jwtDecodedValue;
+  if (jwtDecodedValue) {
+    const id = jwtDecodedValue.id; // mongoose id
+    const blockedUserId = req.body.blockedUserId;
+    const data = await User.findByIdAndUpdate(
+      id,
+      { $addToSet: { blockedUserIds: blockedUserId } },
       { new: true, runValidators: true }
     );
     res.status(200).json({ data });

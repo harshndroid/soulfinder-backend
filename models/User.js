@@ -8,6 +8,9 @@ const userSchema = mongoose.Schema({
   name: { type: String },
   age: { type: Number },
   photoUrl: { type: String },
+  bio: { type: String },
+  currentCity: { type: String },
+  blockedUserIds: { type: [String], default: [] },
 });
 
 const User = mongoose.model('User', userSchema);
