@@ -1,9 +1,21 @@
 const User = require('./models/User');
 
 const DEMO_USERS = [
-  { email: 'demo-alex@soulfinder.local', name: 'Alex' },
-  { email: 'demo-zora@soulfinder.local', name: 'Zora' },
-  { email: 'demo-lois@soulfinder.local', name: 'Lois' },
+  {
+    email: 'demo-alex@soulfinder.local',
+    name: 'Alex',
+    photoUrl: 'https://i.pravatar.cc/150?u=demo-alex@soulfinder.local',
+  },
+  {
+    email: 'demo-zora@soulfinder.local',
+    name: 'Zora',
+    photoUrl: 'https://i.pravatar.cc/150?u=demo-zora@soulfinder.local',
+  },
+  {
+    email: 'demo-lois@soulfinder.local',
+    name: 'Lois',
+    photoUrl: 'https://i.pravatar.cc/150?u=demo-lois@soulfinder.local',
+  },
 ];
 
 const randomAge = () => Math.floor(Math.random() * (35 - 25 + 1)) + 25;
@@ -15,12 +27,13 @@ const seedDemoUsersNearLocation = async (location) => {
   if (!location?.latitude || !location?.longitude) return;
 
   await Promise.all(
-    DEMO_USERS.map(({ email, name }) =>
+    DEMO_USERS.map(({ email, name, photoUrl }) =>
       User.findOneAndUpdate(
         { email },
         {
           email,
           name,
+          photoUrl,
           age: randomAge(),
           location: {
             latitude: location.latitude + randomOffset(),
