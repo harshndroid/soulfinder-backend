@@ -18,8 +18,11 @@ app.use(function (req, res, next) {
 });
 
 const jwt = require('jsonwebtoken');
+const { OAuth2Client } = require('google-auth-library');
 const User = require('./models/User');
 const usersRoute = require('./routes/usersRoute');
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 app.get('/', (req, res) => {
   res.send('Server is running...');
@@ -64,6 +67,37 @@ app.post('/login', async (req, res) => {
     res
       .status(500)
       .json({ error: 'newUser is undefined - issue in database conn' });
+  }
+});
+
+app.post('/googleLogin', async (req, res) => {
+  console.log('/googleLogin');
+  try {
+    const ticket = await googleClient.verifyIdToken({
+      idToken: req.body.credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    const payload = ticket.getPayload();
+    const { email, name, picture } = payload;
+
+    let existingUser = await User.findOne({ email });
+    if (!existingUser) {
+      existingUser = await new User({ email, name, photoUrl: picture }).save();
+      var isNewUser = true;
+    } else {
+      isNewUser = false;
+    }
+
+    const token = jwt.sign({ email, id: existingUser.id }, 'somerandomtext');
+    res.status(200).json({
+      token,
+      email,
+      userId: existingUser.id,
+      isNewUser,
+    });
+  } catch (error) {
+    console.log('======googleLogin error', error);
+    res.status(500).json({ error: 'Google sign-in failed' });
   }
 });
 

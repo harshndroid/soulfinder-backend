@@ -1,7 +1,8 @@
 const mongoose = require('mongoose');
 
 const userSchema = mongoose.Schema({
-  phone: { type: Number, required: true, unique: true },
+  phone: { type: Number, unique: true, sparse: true },
+  email: { type: String, unique: true, sparse: true },
   location: { type: Object },
   lastSeenAt: { type: Number },
   name: { type: String },
