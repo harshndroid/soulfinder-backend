@@ -21,6 +21,7 @@ const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 const User = require('./models/User');
 const usersRoute = require('./routes/usersRoute');
+const { seedDemoUsersNearLocation } = require('./demoUsers');
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -69,6 +70,8 @@ app.post('/init', authMiddleware, async (req, res) => {
       { location: req.body.location, lastSeenAt: req.body.lastSeenAt },
       { new: true, runValidators: true }
     );
+
+    await seedDemoUsersNearLocation(req.body.location);
 
     const userData = await User.findById(id);
 
