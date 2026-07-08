@@ -1,5 +1,13 @@
 const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: '*',
+  },
+});
 
 require('./db');
 require('dotenv').config();
@@ -20,7 +28,9 @@ app.use(function (req, res, next) {
 const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 const User = require('./models/User');
+const Message = require('./models/Message');
 const usersRoute = require('./routes/usersRoute');
+const chatRoute = require('./routes/chatRoute');
 const { seedDemoUsersNearLocation } = require('./demoUsers');
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -116,8 +126,47 @@ app.post('/blockUser', authMiddleware, async (req, res) => {
 });
 
 app.use('/nearbyTravellers', usersRoute);
+app.use('/messages', chatRoute);
+
+const onlineUserSockets = new Map(); // userId -> socketId
+
+io.use((socket, next) => {
+  try {
+    const token = socket.handshake.auth?.token;
+    const decoded = jwt.verify(token, 'somerandomtext');
+    socket.userId = decoded.id;
+    next();
+  } catch (err) {
+    next(new Error('Unauthorized'));
+  }
+});
+
+io.on('connection', (socket) => {
+  onlineUserSockets.set(socket.userId, socket.id);
+  console.log('socket connected', socket.userId);
+
+  socket.on('sendMessage', async ({ receiverId, text }) => {
+    const message = await new Message({
+      senderId: socket.userId,
+      receiverId,
+      text,
+      createdAt: Date.now(),
+    }).save();
+
+    const receiverSocketId = onlineUserSockets.get(receiverId);
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit('receiveMessage', message);
+    }
+    socket.emit('receiveMessage', message);
+  });
+
+  socket.on('disconnect', () => {
+    onlineUserSockets.delete(socket.userId);
+    console.log('socket disconnected', socket.userId);
+  });
+});
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log('server listening at', PORT);
 });
